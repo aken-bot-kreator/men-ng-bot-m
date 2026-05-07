@@ -1,11 +1,11 @@
- import os
+import os
 import telebot
 import yt_dlp
 from telebot import types
 
-import telebot
-import yt_dlp
-from telebot import types
+
+
+
 
 TOKEN = '8704054237:AAHW9QMqFQPcInceEvlZ703u5-uBIW3ir-4'
 bot = telebot.TeleBot(TOKEN)
