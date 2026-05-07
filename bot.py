@@ -1,109 +1,64 @@
 import os
 import telebot
 import yt_dlp
+from telebot import types
 
-TOKEN = 8704054237:AAHW9QMqFQPcInceEvlZ703u5-uBIw3ir-4
-
+TOKEN = '8704054237:AAHW9QMqFQPcInceEvlZ703u5-uBIW3ir-4'
 bot = telebot.TeleBot(TOKEN)
 
-DOWNLOAD_FOLDER = "downloads"
+AD_TEXT = "" 
 
-if not os.path.exists(DOWNLOAD_FOLDER):
-    os.makedirs(DOWNLOAD_FOLDER)
+if not os.path.exists('downloads'):
+    os.makedirs('downloads')
 
+def main_markup():
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🎬 Video (MP4)", callback_data="v_video"))
+    markup.add(types.InlineKeyboardButton("🎵 Musiqa (MP3)", callback_data="a_audio"))
+    return markup
+
+user_links = {}
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(
-        message,
-        "🎵 Universal Media Bot\n\n"
-        "YouTube / TikTok / Instagram link yuboring."
-    )
+    bot.send_message(message.chat.id, "✨ Xush kelibsiz!\n📥 Link yuboring va formatni tanlang!", parse_mode="Markdown")
 
+@bot.message_handler(func=lambda m: "http" in m.text)
+def handle_url(message):
+    user_links[message.chat.id] = message.text
+    bot.reply_to(message, "💎 Formatni tanlang:", reply_markup=main_markup())
 
-# Video yuklash
+@bot.callback_query_handler(func=lambda call: True)
+def download(call):
+    chat_id = call.message.chat.id
+    url = user_links.get(chat_id)
+    is_audio = call.data == "a_audio"
+    if not url: return
 
-def download_video(url):
-
+    bot.edit_message_text("⚡️ Yuklanmoqda...", chat_id, call.message.message_id)
+    
     ydl_opts = {
-        'format': 'bestvideo+bestaudio/best',
-        'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
-        'merge_output_format': 'mp4',
-        'quiet': True,
-        'noplaylist': True,
-    }
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        file_path = ydl.prepare_filename(info)
-
-        if not file_path.endswith('.mp4'):
-            base = os.path.splitext(file_path)[0]
-            mp4_path = base + '.mp4'
-
-            if os.path.exists(mp4_path):
-                file_path = mp4_path
-
-        return file_path
-
-
-# Audio yuklash
-
-def download_audio(url):
-
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
-        'quiet': True,
-        'noplaylist': True,
+        'outtmpl': 'downloads/%(title)s.%(ext)s',
+        'format': 'bestaudio/best' if is_audio else 'best',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
-            'preferredquality': '320',
-        }],
+            'preferredquality': '192',
+        }] if is_audio else [],
+        'quiet': True
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        title = info['title']
-        return f'{DOWNLOAD_FOLDER}/{title}.mp3'
-
-
-@bot.message_handler(func=lambda m: True)
-def downloader(message):
-
-    url = message.text.strip()
-
-    if "http" not in url:
-        bot.reply_to(message, "❌ To‘g‘ri link yuboring")
-        return
-
-    wait = bot.reply_to(message, "⏳ Yuklanmoqda...")
-
     try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            f_path = ydl.prepare_filename(info)
+            if is_audio: f_path = f_path.rsplit('.', 1)[0] + '.mp3'
+            with open(f_path, 'rb') as f:
+                if is_audio: bot.send_audio(chat_id, f)
+                else: bot.send_video(chat_id, f)
+            os.remove(f_path)
+    except Exception:
+        bot.send_message(chat_id, "❌ Xatolik yuz berdi!")
+    bot.delete_message(chat_id, call.message.message_id)
 
-        # Audio so‘rasa
-        if "mp3" in url.lower():
-            audio_path = download_audio(url)
-
-            with open(audio_path, 'rb') as audio:
-                bot.send_audio(message.chat.id, audio)
-
-            os.remove(audio_path)
-
-        else:
-            video_path = download_video(url)
-
-            with open(video_path, 'rb') as video:
-                bot.send_video(message.chat.id, video)
-
-            os.remove(video_path)
-
-        bot.delete_message(message.chat.id, wait.message_id)
-
-    except Exception as e:
-        bot.reply_to(message, f"❌ Xato:\n{e}")
-
-
-print("BOT ISHLADI")
-bot.infinity_polling(skip_pending=True)
+bot.polling(none_stop=True) 
