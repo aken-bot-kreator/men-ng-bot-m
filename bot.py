@@ -96,5 +96,5 @@ def process_download(call):
         logger.error(f"Xato: {e}")
         bot.send_message(chat_id, "❌ Xatolik yuz berdi. Havola noto'g'ri bo'lishi mumkin.")
 
-if __ name__ == "__main__":
-    bot.infinity_polling()
+bot.infinity_polling() 
+    
