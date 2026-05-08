@@ -6,7 +6,7 @@ from telebot import types
 
 # 1. Loglash (Xatolarni terminalda ko'rish uchun)
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 # 2. Bot tokeni
 BOT_TOKEN = '8704054237:AAHW9QMqFQPcInceEvlZ703u5-uBIw3ir-4'
